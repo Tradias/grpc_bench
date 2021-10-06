@@ -53,7 +53,7 @@ void spawn_accept_loop(
       auto &writer = context->writer;
       agrpc::finish(writer, response, grpc::Status::OK,
                     boost::asio::bind_executor(
-                        grpc_context, [context = std::move(context)]() {}));
+                        grpc_context, [context = std::move(context)](bool) {}));
     }
   });
 }
@@ -65,9 +65,11 @@ int main() {
   std::unique_ptr<grpc::Server> server;
   helloworld::Greeter::AsyncService service;
 
-  const auto parallelism = std::atoi(std::getenv("GRPC_SERVER_CPUS"));
+  const auto env = std::getenv("GRPC_SERVER_CPUS");
+  const auto parallelism =
+      env ? std::atoi(env) : std::thread::hardware_concurrency();
   std::forward_list<agrpc::GrpcContext> grpc_contexts;
-  for (int i = 0; i < parallelism; ++i) {
+  for (size_t i = 0; i < parallelism; ++i) {
     grpc_contexts.emplace_front(builder.AddCompletionQueue());
   }
 
@@ -78,7 +80,7 @@ int main() {
 
   std::vector<std::thread> threads;
   threads.reserve(parallelism);
-  for (int i = 0; i < parallelism; ++i) {
+  for (size_t i = 0; i < parallelism; ++i) {
     threads.emplace_back([&, i] {
       auto &grpc_context = *std::next(grpc_contexts.begin(), i);
       auto guard = boost::asio::make_work_guard(grpc_context);

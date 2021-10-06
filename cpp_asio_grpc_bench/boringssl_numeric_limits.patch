@@ -1,0 +1,12 @@
+diff --git a/src/tool/generate_ech.cc b/src/tool/generate_ech.cc
+index 1fe501db0..f1e8cbea1 100644
+--- a/src/tool/generate_ech.cc
++++ b/src/tool/generate_ech.cc
+@@ -14,6 +14,7 @@
+ 
+ #include <stdio.h>
+ 
++#include <limits>
+ #include <vector>
+ 
+ #include <openssl/bytestring.h>

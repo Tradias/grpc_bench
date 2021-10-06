@@ -3,28 +3,48 @@ FROM gcc:11
 RUN apt-get update && apt-get install -y \
     wget \
     make \
-    libprotobuf-dev \
-    libgrpc++-dev \
-    protobuf-compiler \
-    protobuf-compiler-grpc \
+    git \
     libboost-dev \
-    libboost-coroutine-dev
+    libboost-coroutine-dev \
+    libjemalloc2
 
 WORKDIR /app
 
 ARG CMAKE_VERSION=3.21.2
 RUN wget --no-verbose https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh \
     && chmod +x ./cmake-${CMAKE_VERSION}-linux-x86_64.sh \
-    && ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/usr
+    && ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/usr \
+    && rm ./cmake-${CMAKE_VERSION}-linux-x86_64.sh
 
-ARG ASIO_GRPC_VERSION=1.0.0
+ARG ASIO_GRPC_VERSION=1.1.0
 RUN wget --no-verbose https://github.com/Tradias/asio-grpc/archive/refs/tags/v${ASIO_GRPC_VERSION}.tar.gz \
-    && tar zxf v${ASIO_GRPC_VERSION}.tar.gz -C /app \
+    && tar zxf v${ASIO_GRPC_VERSION}.tar.gz -C ./ \
+    && rm v${ASIO_GRPC_VERSION}.tar.gz \
     && cd asio-grpc-${ASIO_GRPC_VERSION} \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && cmake --build . --target install
+    && cmake -B ./build \
+    && cmake --build ./build --target install
+
+ARG GRPC_VERSION=1.41.0
+COPY cpp_asio_grpc_bench/boringssl_numeric_limits.patch /app
+RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://github.com/grpc/grpc.git \
+    && cd grpc/third_party/boringssl-with-bazel \
+    && git apply /app/boringssl_numeric_limits.patch \
+    && cd /app/grpc \
+    && cmake -B ./build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DgRPC_INSTALL=on \
+        -DCARES_BUILD_TOOLS=off \
+        -DRE2_BUILD_TESTING=off \
+        -DgRPC_BUILD_CSHARP_EXT=off \
+        -DgRPC_BUILD_GRPC_CSHARP_PLUGIN=off \
+        -DgRPC_BUILD_GRPC_NODE_PLUGIN=off \
+        -DgRPC_BUILD_GRPC_OBJECTIVE_C_PLUGIN=off \
+        -DgRPC_BUILD_GRPC_PHP_PLUGIN=off \
+        -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=off \
+        -DgRPC_BUILD_GRPC_RUBY_PLUGIN=off \
+        -DCMAKE_CXX_STANDARD=17 \
+    && cmake --build ./build --target install --parallel=4 \
+    && rm -rf /app/grpc
 
 COPY proto /app/proto
 RUN mkdir gen \
@@ -42,4 +62,4 @@ RUN mkdir build \
 
 EXPOSE 50051
 
-ENTRYPOINT ["/app/out/bin/cpp_asio_grpc_bench"]
+ENTRYPOINT LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /app/out/bin/cpp_asio_grpc_bench
