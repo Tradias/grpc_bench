@@ -1,14 +1,13 @@
-FROM gcc:11
-
-RUN apt-get update && apt-get install -y protobuf-compiler protobuf-compiler-grpc libgrpc++-dev
+FROM grpc_bench_cpp_base:latest
 
 WORKDIR /app
+
 COPY cpp_grpc_st_bench /app
-COPY proto /app/proto
 
-RUN mkdir gen && \
-    protoc --proto_path=/app/proto/helloworld --cpp_out=gen helloworld.proto && \
-    protoc --proto_path=/app/proto/helloworld --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` helloworld.proto
-RUN g++ -O3 -flto main.cpp gen/helloworld.grpc.pb.cc gen/helloworld.pb.cc -Igen -lgrpc++ -lprotobuf -lgrpc
+RUN cmake \
+        -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/app/out \
+    && cmake --build ./build --config Release --parallel --target install
 
-ENTRYPOINT /app/a.out
+ENTRYPOINT LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /app/out/bin/cpp_grpc_st_bench

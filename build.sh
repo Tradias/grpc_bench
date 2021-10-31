@@ -9,6 +9,17 @@ BENCHMARKS_TO_BUILD="${@}"
 ##  ...or use all the *_bench dirs by default
 BENCHMARKS_TO_BUILD="${BENCHMARKS_TO_BUILD:-$(find . -maxdepth 1 -name '*_bench' -type d | sort)}"
 
+build_cpp_base() {
+    for benchmark in ${BENCHMARKS_TO_BUILD}; do
+        case $benchmark in
+            cpp_*) docker build --file "./cpp_base/Dockerfile" --tag grpc_bench_cpp_base .
+            return 0
+            ;;
+        esac
+    done
+}
+build_cpp_base
+
 builds=""
 for benchmark in ${BENCHMARKS_TO_BUILD}; do
 	echo "==> Building Docker image for ${benchmark}..."

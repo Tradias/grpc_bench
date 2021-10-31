@@ -20,4 +20,6 @@ IMAGES_TO_CLEAN="$(echo ${IMAGES_TO_CLEAN} | tr -s ' ' '\n' | sort | uniq)"
 
 docker image remove ${IMAGES_TO_CLEAN}
 
+docker image remove grpc_bench_cpp_base:latest
+
 docker image remove ghz_bench:latest

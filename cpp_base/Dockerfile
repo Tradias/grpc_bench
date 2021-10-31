@@ -4,8 +4,6 @@ RUN apt-get update && apt-get install -y \
     wget \
     make \
     git \
-    libboost-dev \
-    libboost-coroutine-dev \
     libjemalloc2
 
 WORKDIR /app
@@ -16,16 +14,8 @@ RUN wget --no-verbose https://github.com/Kitware/CMake/releases/download/v${CMAK
     && ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/usr \
     && rm ./cmake-${CMAKE_VERSION}-linux-x86_64.sh
 
-ARG ASIO_GRPC_VERSION=1.1.0
-RUN wget --no-verbose https://github.com/Tradias/asio-grpc/archive/refs/tags/v${ASIO_GRPC_VERSION}.tar.gz \
-    && tar zxf v${ASIO_GRPC_VERSION}.tar.gz -C ./ \
-    && rm v${ASIO_GRPC_VERSION}.tar.gz \
-    && cd asio-grpc-${ASIO_GRPC_VERSION} \
-    && cmake -B ./build \
-    && cmake --build ./build --target install
-
 ARG GRPC_VERSION=1.41.0
-COPY cpp_asio_grpc_bench/boringssl_numeric_limits.patch /app
+COPY cpp_base/boringssl_numeric_limits.patch /app
 RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://github.com/grpc/grpc.git \
     && cd grpc/third_party/boringssl-with-bazel \
     && git apply /app/boringssl_numeric_limits.patch \
@@ -51,15 +41,5 @@ RUN mkdir gen \
     && protoc --proto_path=/app/proto/helloworld --cpp_out=gen helloworld.proto \
     && protoc --proto_path=/app/proto/helloworld --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` helloworld.proto
 
-COPY cpp_asio_grpc_bench /app
-RUN mkdir build \
-    && cd build \
-    && cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/app/out \
-        .. \
-    && cmake --build . --config=Release --parallel=3 --target install
-
 EXPOSE 50051
 
-ENTRYPOINT LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /app/out/bin/cpp_asio_grpc_bench
