@@ -7,8 +7,7 @@ project(
   LANGUAGES CXX)
 
 find_package(protobuf REQUIRED)
-find_package(gRPC REQUIRED)
-find_package(Boost REQUIRED)
+find_package(asio-grpc REQUIRED)
 
 add_executable(${PROJECT_NAME})
 
@@ -17,8 +16,7 @@ target_sources(
   PRIVATE main.cpp "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.pb.cc"
           "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.grpc.pb.cc")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE gRPC::grpc++_unsecure
-                                              Boost::headers)
+target_link_libraries(${PROJECT_NAME} PRIVATE asio-grpc::asio-grpc)
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE "${CMAKE_CURRENT_LIST_DIR}/gen")

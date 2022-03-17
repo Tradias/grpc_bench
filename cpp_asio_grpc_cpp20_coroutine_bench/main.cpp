@@ -15,10 +15,9 @@
 #include "helloworld.grpc.pb.h"
 
 #include <agrpc/asioGrpc.hpp>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
-#include <boost/asio/executor_work_guard.hpp>
-#include <boost/asio/bind_executor.hpp>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
@@ -27,42 +26,20 @@
 #include <thread>
 #include <vector>
 
-struct UnaryRPCContext {
-  grpc::ServerContext server_context;
-  helloworld::HelloRequest request;
-  grpc::ServerAsyncResponseWriter<helloworld::HelloReply> writer{
-      &server_context};
-};
-
-void spawn_accept_loop(
-    agrpc::GrpcContext &grpc_context,
-    helloworld::Greeter::AsyncService &service,
-    boost::asio::executor_work_guard<agrpc::GrpcContext::executor_type>
-        &guard) {
-  boost::asio::co_spawn(
-      grpc_context,
-      [&]() -> boost::asio::awaitable<void> {
-        bool request_ok{true};
-        while (request_ok) {
-          auto context = std::allocate_shared<UnaryRPCContext>(
-              grpc_context.get_allocator());
-          request_ok = co_await agrpc::request(
-              &helloworld::Greeter::AsyncService::RequestSayHello, service,
-              context->server_context, context->request, context->writer);
-          if (!request_ok) {
-            guard.reset();
-            co_return;
-          }
-          helloworld::HelloReply response;
-          response.set_message(context->request.name());
-          auto &writer = context->writer;
-          agrpc::finish(
-              writer, response, grpc::Status::OK,
-              boost::asio::bind_executor(
-                  grpc_context, [context = std::move(context)](bool) {}));
-        }
-      },
-      boost::asio::detached);
+void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
+                       helloworld::Greeter::AsyncService &service) {
+  agrpc::repeatedly_request(
+      &helloworld::Greeter::AsyncService::RequestSayHello, service,
+      boost::asio::bind_executor(
+          grpc_context,
+          [&](grpc::ServerContext &, helloworld::HelloRequest &request,
+              grpc::ServerAsyncResponseWriter<helloworld::HelloReply> &writer)
+              -> boost::asio::awaitable<void> {
+            std::aligned_storage_t<64> buffer;
+            helloworld::HelloReply response;
+            response.set_message(std::move(*request.mutable_name()));
+            co_await agrpc::finish(writer, response, grpc::Status::OK);
+          }));
 }
 
 int main() {
@@ -90,8 +67,7 @@ int main() {
   for (size_t i = 0; i < parallelism; ++i) {
     threads.emplace_back([&, i] {
       auto &grpc_context = *std::next(grpc_contexts.begin(), i);
-      auto guard = boost::asio::make_work_guard(grpc_context);
-      spawn_accept_loop(grpc_context, service, guard);
+      spawn_accept_loop(grpc_context, service);
       grpc_context.run();
     });
   }

@@ -14,11 +14,8 @@ RUN wget --no-verbose https://github.com/Kitware/CMake/releases/download/v${CMAK
     && ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/usr \
     && rm ./cmake-${CMAKE_VERSION}-linux-x86_64.sh
 
-ARG GRPC_VERSION=1.41.0
-COPY cpp_base/boringssl_numeric_limits.patch /app
+ARG GRPC_VERSION=1.43.2
 RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://github.com/grpc/grpc.git \
-    && cd grpc/third_party/boringssl-with-bazel \
-    && git apply /app/boringssl_numeric_limits.patch \
     && cd /app/grpc \
     && cmake -B ./build \
         -DCMAKE_BUILD_TYPE=Release \
