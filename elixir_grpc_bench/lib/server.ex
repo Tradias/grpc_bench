@@ -1,9 +1,9 @@
 defmodule Helloworld.Greeter.Server do
-  use GRPC.Server, service: Helloworld.Greeter.Service
+  use Falco.Server, service: Helloworld.Greeter.Service, compressors: [Falco.Compressor.Gzip]
 
-  @spec say_hello(Helloworld.HelloRequest.t(), GRPC.Server.Stream.t()) ::
+  @spec say_hello(Helloworld.HelloRequest.t(), Falco.Server.Stream.t()) ::
           Helloworld.HelloReply.t()
   def say_hello(request, _stream) do
-    Helloworld.HelloReply.new(message: "#{request.name}")
+    Helloworld.HelloReply.new(response: request.request)
   end
 end

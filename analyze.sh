@@ -7,7 +7,7 @@ echo "Benchmark finished. Detailed results are located in: ${RESULTS_DIR}"
 docker run --name analyzer --rm \
 	-v "${PWD}/analyze:/analyze:ro" \
 	-v "${PWD}/${RESULTS_DIR}:/reports:ro" \
-	ruby:2.7-buster ruby /analyze/results_analyze.rb reports ||
+	ruby:2.7-slim-buster ruby /analyze/results_analyze.rb reports ||
 	exit 1
 
 cat > ${RESULTS_DIR}/bench.params << EOF
@@ -21,5 +21,5 @@ $(git log -1 --pretty="%h %cD %cn %s")
 - GRPC_CLIENT_CONCURRENCY=${GRPC_CLIENT_CONCURRENCY}
 - GRPC_CLIENT_QPS=${GRPC_CLIENT_QPS}
 - GRPC_CLIENT_CPUS=${GRPC_CLIENT_CPUS}
-- GRPC_REQUEST_PAYLOAD=${GRPC_REQUEST_PAYLOAD}
+- GRPC_REQUEST_SCENARIO=${GRPC_REQUEST_SCENARIO}
 EOF

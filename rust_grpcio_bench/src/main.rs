@@ -19,9 +19,9 @@ static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 struct GreeterService;
 
 impl Greeter for GreeterService {
-    fn say_hello(&mut self, ctx: RpcContext<'_>, req: HelloRequest, sink: UnarySink<HelloReply>) {
+    fn say_hello(&mut self, ctx: RpcContext<'_>, mut req: HelloRequest, sink: UnarySink<HelloReply>) {
         let mut resp = HelloReply::default();
-        resp.set_message(req.get_name().to_string());
+        resp.set_response(req.take_request());
         let f = sink
             .success(resp)
             .map_err(move |e| println!("failed to reply {:?}: {:?}", req, e))
@@ -41,7 +41,7 @@ fn main() {
 
     let mut server = ServerBuilder::new(env)
         .register_service(service)
-        .bind("127.0.0.1", 50_051)
+        .bind("0.0.0.0", 50_051)
         .channel_args(ch_builder.build_args())
         .build()
         .unwrap();

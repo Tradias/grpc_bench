@@ -1,6 +1,9 @@
-use Mix.Config
+import Config
 
-# Start server in OTP
-# config :grpc, start_server: true
+config :falco, start_server: true
 
-import_config "#{Mix.env}.exs"
+config :logger,
+  level: :error,
+  compile_time_purge_level: :error,
+  sync_threshold: 10_000,
+  truncate: 4096

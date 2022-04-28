@@ -1,10 +1,9 @@
-FROM rust:1.55
+FROM rust:1.59
 
 WORKDIR /app
 COPY rust_thruster_st_bench /app
 COPY proto /app/proto
 
-RUN cargo build --release
-RUN cargo build --release
+RUN cargo build --release --locked
 
-ENTRYPOINT cargo run --release
+ENTRYPOINT ["/app/target/release/helloworld-server"]

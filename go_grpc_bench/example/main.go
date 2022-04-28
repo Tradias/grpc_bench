@@ -24,6 +24,7 @@ import (
 	"log"
 	"net"
 
+	_ "go.uber.org/automaxprocs"
 	"google.golang.org/grpc"
 	pb "local/proto/helloworld"
 )
@@ -39,7 +40,7 @@ type server struct {
 
 // SayHello implements helloworld.GreeterServer
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	return &pb.HelloReply{Message: in.GetName()}, nil
+	return &pb.HelloReply{Response: in.GetRequest()}, nil
 }
 
 func main() {

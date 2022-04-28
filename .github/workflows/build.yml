@@ -1,0 +1,1393 @@
+name: B&B w/ complex_proto
+
+on:
+  push:
+  pull_request:
+
+env:
+  GRPC_REQUEST_SCENARIO: complex_proto
+
+jobs:
+  meta-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: ./generate_ci.sh | tee .github/workflows/build.yml
+    - run: git --no-pager diff --exit-code
+
+  set-image-name:
+    runs-on: ubuntu-latest
+    needs: [meta-check]
+    outputs:
+      name: ${{ steps.namer.outputs.name }}
+    steps:
+    - name: Set lowercase image name
+      id: namer
+      run: echo "::set-output name=name::ghcr.io/${SLUG,,}"
+      env:
+        SLUG: ${{ github.repository }}
+
+  changed:
+    runs-on: ubuntu-latest
+    needs: [meta-check]
+    outputs:
+      files: ${{ steps.finder.outputs.all_changed_and_modified_files }}
+      base: ${{ steps.base.outputs.base }}
+    steps:
+    - name: Deep checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Get changed files
+      id: finder
+      uses: tj-actions/changed-files@v13.1
+
+    - name: Output whether base changed
+      id: base
+      run: echo "::set-output name=base::$BASE"
+      env:
+        BASE: >-
+          ${{
+          contains(steps.finder.outputs.all_changed_and_modified_files, '.dockerignore')     ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'analyze.sh')        ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'bench.sh')          ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'build.sh')          ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'clean.sh')          ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'collect_stats.sh')  ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'generate_ci.sh')    ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'proto/')            ||
+          contains(steps.finder.outputs.all_changed_and_modified_files, 'setup_scenario.sh') }}
+
+
+  cpp_asio_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'cpp_asio_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build cpp_asio_grpc_bench
+      run: ./build.sh cpp_asio_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark cpp_asio_grpc_bench
+      run: ./bench.sh cpp_asio_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:cpp_asio_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  cpp_grpc_mt_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'cpp_grpc_mt_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build cpp_grpc_mt_bench
+      run: ./build.sh cpp_grpc_mt_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark cpp_grpc_mt_bench
+      run: ./bench.sh cpp_grpc_mt_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:cpp_grpc_mt_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  cpp_grpc_st_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'cpp_grpc_st_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build cpp_grpc_st_bench
+      run: ./build.sh cpp_grpc_st_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark cpp_grpc_st_bench
+      run: ./bench.sh cpp_grpc_st_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:cpp_grpc_st_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  crystal_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'crystal_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build crystal_grpc_bench
+      run: ./build.sh crystal_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark crystal_grpc_bench
+      run: ./bench.sh crystal_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:crystal_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  d_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'd_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build d_grpc_bench
+      run: ./build.sh d_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark d_grpc_bench
+      run: ./bench.sh d_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:d_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  dotnet_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'dotnet_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build dotnet_grpc_bench
+      run: ./build.sh dotnet_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark dotnet_grpc_bench
+      run: ./bench.sh dotnet_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:dotnet_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  elixir_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'elixir_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build elixir_grpc_bench
+      run: ./build.sh elixir_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark elixir_grpc_bench
+      run: ./bench.sh elixir_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:elixir_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  erlang_grpcbox_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'erlang_grpcbox_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build erlang_grpcbox_bench
+      run: ./build.sh erlang_grpcbox_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark erlang_grpcbox_bench
+      run: ./bench.sh erlang_grpcbox_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:erlang_grpcbox_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  go_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'go_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build go_grpc_bench
+      run: ./build.sh go_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark go_grpc_bench
+      run: ./bench.sh go_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:go_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  go_vtgrpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'go_vtgrpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build go_vtgrpc_bench
+      run: ./build.sh go_vtgrpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark go_vtgrpc_bench
+      run: ./bench.sh go_vtgrpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:go_vtgrpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_aot_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_aot_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_aot_bench
+      run: ./build.sh java_aot_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_aot_bench
+      run: ./bench.sh java_aot_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_aot_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_armeria_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_armeria_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_armeria_bench
+      run: ./build.sh java_armeria_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_armeria_bench
+      run: ./bench.sh java_armeria_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_armeria_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_hotspot_grpc_g1gc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_hotspot_grpc_g1gc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_hotspot_grpc_g1gc_bench
+      run: ./build.sh java_hotspot_grpc_g1gc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_hotspot_grpc_g1gc_bench
+      run: ./bench.sh java_hotspot_grpc_g1gc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_hotspot_grpc_g1gc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_hotspot_grpc_pgc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_hotspot_grpc_pgc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_hotspot_grpc_pgc_bench
+      run: ./build.sh java_hotspot_grpc_pgc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_hotspot_grpc_pgc_bench
+      run: ./bench.sh java_hotspot_grpc_pgc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_hotspot_grpc_pgc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_hotspot_grpc_sgc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_hotspot_grpc_sgc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_hotspot_grpc_sgc_bench
+      run: ./build.sh java_hotspot_grpc_sgc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_hotspot_grpc_sgc_bench
+      run: ./bench.sh java_hotspot_grpc_sgc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_hotspot_grpc_sgc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_hotspot_grpc_she_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_hotspot_grpc_she_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_hotspot_grpc_she_bench
+      run: ./build.sh java_hotspot_grpc_she_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_hotspot_grpc_she_bench
+      run: ./bench.sh java_hotspot_grpc_she_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_hotspot_grpc_she_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_hotspot_grpc_zgc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_hotspot_grpc_zgc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_hotspot_grpc_zgc_bench
+      run: ./build.sh java_hotspot_grpc_zgc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_hotspot_grpc_zgc_bench
+      run: ./bench.sh java_hotspot_grpc_zgc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_hotspot_grpc_zgc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_micronaut_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_micronaut_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_micronaut_bench
+      run: ./build.sh java_micronaut_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_micronaut_bench
+      run: ./bench.sh java_micronaut_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_micronaut_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_micronaut_workstealing_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_micronaut_workstealing_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_micronaut_workstealing_bench
+      run: ./build.sh java_micronaut_workstealing_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_micronaut_workstealing_bench
+      run: ./bench.sh java_micronaut_workstealing_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_micronaut_workstealing_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_openj9_grpc_gencon_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_openj9_grpc_gencon_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_openj9_grpc_gencon_bench
+      run: ./build.sh java_openj9_grpc_gencon_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_openj9_grpc_gencon_bench
+      run: ./bench.sh java_openj9_grpc_gencon_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_openj9_grpc_gencon_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_quarkus_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_quarkus_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_quarkus_bench
+      run: ./build.sh java_quarkus_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_quarkus_bench
+      run: ./bench.sh java_quarkus_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_quarkus_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  java_quarkus_native_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'java_quarkus_native_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build java_quarkus_native_bench
+      run: ./build.sh java_quarkus_native_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark java_quarkus_native_bench
+      run: ./bench.sh java_quarkus_native_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:java_quarkus_native_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  kotlin_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'kotlin_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build kotlin_grpc_bench
+      run: ./build.sh kotlin_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark kotlin_grpc_bench
+      run: ./bench.sh kotlin_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:kotlin_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  node_grpcjs_st_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'node_grpcjs_st_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build node_grpcjs_st_bench
+      run: ./build.sh node_grpcjs_st_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark node_grpcjs_st_bench
+      run: ./bench.sh node_grpcjs_st_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:node_grpcjs_st_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  php_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'php_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build php_grpc_bench
+      run: ./build.sh php_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark php_grpc_bench
+      run: ./bench.sh php_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:php_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  python_async_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'python_async_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build python_async_grpc_bench
+      run: ./build.sh python_async_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark python_async_grpc_bench
+      run: ./bench.sh python_async_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:python_async_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  python_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'python_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build python_grpc_bench
+      run: ./build.sh python_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark python_grpc_bench
+      run: ./bench.sh python_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:python_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  ruby_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'ruby_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build ruby_grpc_bench
+      run: ./build.sh ruby_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark ruby_grpc_bench
+      run: ./bench.sh ruby_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:ruby_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  rust_grpcio_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'rust_grpcio_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build rust_grpcio_bench
+      run: ./build.sh rust_grpcio_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark rust_grpcio_bench
+      run: ./bench.sh rust_grpcio_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:rust_grpcio_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  rust_thruster_mt_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'rust_thruster_mt_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build rust_thruster_mt_bench
+      run: ./build.sh rust_thruster_mt_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark rust_thruster_mt_bench
+      run: ./bench.sh rust_thruster_mt_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:rust_thruster_mt_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  rust_thruster_st_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'rust_thruster_st_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build rust_thruster_st_bench
+      run: ./build.sh rust_thruster_st_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark rust_thruster_st_bench
+      run: ./bench.sh rust_thruster_st_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:rust_thruster_st_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  rust_tonic_mt_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'rust_tonic_mt_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build rust_tonic_mt_bench
+      run: ./build.sh rust_tonic_mt_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark rust_tonic_mt_bench
+      run: ./bench.sh rust_tonic_mt_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:rust_tonic_mt_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  rust_tonic_st_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'rust_tonic_st_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build rust_tonic_st_bench
+      run: ./build.sh rust_tonic_st_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark rust_tonic_st_bench
+      run: ./bench.sh rust_tonic_st_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:rust_tonic_st_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  scala_akka_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'scala_akka_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build scala_akka_bench
+      run: ./build.sh scala_akka_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark scala_akka_bench
+      run: ./bench.sh scala_akka_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:scala_akka_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  scala_fs2_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'scala_fs2_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build scala_fs2_bench
+      run: ./build.sh scala_fs2_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark scala_fs2_bench
+      run: ./bench.sh scala_fs2_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:scala_fs2_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  scala_zio_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'scala_zio_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build scala_zio_bench
+      run: ./build.sh scala_zio_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark scala_zio_bench
+      run: ./bench.sh scala_zio_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:scala_zio_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+
+  swift_grpc_bench:
+    runs-on: ubuntu-latest
+    needs:
+    - set-image-name
+    - changed
+    if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, 'swift_grpc_bench/')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build swift_grpc_bench
+      run: ./build.sh swift_grpc_bench
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - name: Benchmark swift_grpc_bench
+      run: ./bench.sh swift_grpc_bench
+      env:
+        GRPC_BENCHMARK_DURATION: 30s
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: Log in to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - if: github.ref == 'refs/heads/master'
+      name: If on master push image to GHCR
+      run: docker push $GRPC_IMAGE_NAME:swift_grpc_bench-complex_proto
+      env:
+        GRPC_IMAGE_NAME: ${{ needs.set-image-name.outputs.name }}
+

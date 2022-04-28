@@ -1,2 +1,11 @@
 results/
 *.tmp
+proto/
+payload/
+
+# Gradle and IntelliJ
+.idea/
+.gradle/
+
+# Build output
+build/

@@ -15,7 +15,8 @@ export GRPC_CLIENT_CONCURRENCY=${GRPC_CLIENT_CONCURRENCY:-"1000"}
 export GRPC_CLIENT_QPS=${GRPC_CLIENT_QPS:-"0"}
 export GRPC_CLIENT_QPS=$(( GRPC_CLIENT_QPS / GRPC_CLIENT_CONCURRENCY ))
 export GRPC_CLIENT_CPUS=${GRPC_CLIENT_CPUS:-"1"}
-export GRPC_REQUEST_PAYLOAD=${GRPC_REQUEST_PAYLOAD:-"100B"}
+export GRPC_REQUEST_SCENARIO=${GRPC_REQUEST_SCENARIO:-"complex_proto"}
+export GRPC_IMAGE_NAME="${GRPC_IMAGE_NAME:-grpc_bench}"
 
 # Let containers know how many CPUs they will be running on
 # Additionally export other vars for further analysis script.
@@ -27,6 +28,14 @@ export GRPC_REQUEST_PAYLOAD=${GRPC_REQUEST_PAYLOAD:-"100B"}
 # export GRPC_CLIENT_CONCURRENCY
 # export GRPC_CLIENT_QPS
 
+wait_on_tcp50051() {
+	for ((i=1;i<=10*30;i++)); do
+		nc -z localhost 50051 && return 0
+		sleep .1
+	done
+	return 1
+}
+
 # Loop over benchs
 for benchmark in ${BENCHMARKS_TO_RUN}; do
 	NAME="${benchmark##*/}"
@@ -34,25 +43,39 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 
 	mkdir -p "${RESULTS_DIR}"
 
+	# Setup the chosen scenario
+    if ! sh setup_scenario.sh $GRPC_REQUEST_SCENARIO true; then
+  		echo "Scenario setup fiascoed."
+  		exit 1
+	fi
+
 	# Start the gRPC Server container
-	docker run --name "${NAME}" --rm \
+	docker run \
+		--name "${NAME}" \
+		--rm \
 		--cpus "${GRPC_SERVER_CPUS}" \
 		--memory "${GRPC_SERVER_RAM}" \
 		-e GRPC_SERVER_CPUS \
 		-e GRPC_SERVER_RAM \
-		--network=host --detach --tty "${NAME}" >/dev/null
+		-p 50051:50051 \
+		--detach \
+		--tty \
+		"$GRPC_IMAGE_NAME:${NAME}-$GRPC_REQUEST_SCENARIO" >/dev/null
 
-	# Wait for server to be ready
-	sleep 5
+	printf 'Waiting for server to come up... '
+	if ! wait_on_tcp50051; then
+		echo 'server unresponsive!'
+		exit 1
+	fi
+	echo 'ready.'
 
 	# Warm up the service
-
     if [[ "${GRPC_BENCHMARK_WARMUP}" != "0s" ]]; then
       	echo -n "Warming up the service for ${GRPC_BENCHMARK_WARMUP}... "
     	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" \
     	    -v "${PWD}/payload:/payload:ro" \
     		--cpus $GRPC_CLIENT_CPUS \
-    		ghz_bench:latest \
+    	  obvionaoe/ghz:v0.103.0 \
     		--proto=/proto/helloworld/helloworld.proto \
     		--call=helloworld.Greeter.SayHello \
             --insecure \
@@ -60,7 +83,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
             --connections="${GRPC_CLIENT_CONNECTIONS}" \
             --rps="${GRPC_CLIENT_QPS}" \
             --duration "${GRPC_BENCHMARK_WARMUP}" \
-            --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
+            --data-file /payload/payload \
     		127.0.0.1:50051 > /dev/null
 
     	echo "done."
@@ -78,7 +101,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" \
 	    -v "${PWD}/payload:/payload:ro" \
 		--cpus $GRPC_CLIENT_CPUS \
-		ghz_bench:latest \
+    obvionaoe/ghz:v0.103.0 \
 		--proto=/proto/helloworld/helloworld.proto \
 		--call=helloworld.Greeter.SayHello \
         --insecure \
@@ -86,7 +109,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
         --connections="${GRPC_CLIENT_CONNECTIONS}" \
         --rps="${GRPC_CLIENT_QPS}" \
         --duration "${GRPC_BENCHMARK_DURATION}" \
-        --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
+        --data-file /payload/payload \
 		127.0.0.1:50051 >"${RESULTS_DIR}/${NAME}".report
 
 	# Show quick summary (reqs/sec)
@@ -105,5 +128,12 @@ if sh analyze.sh $RESULTS_DIR; then
   echo "All done."
 else
   echo "Analysis fiascoed."
+  ls -lha $RESULTS_DIR
+  for f in $RESULTS_DIR/*; do
+  	echo
+  	echo
+  	echo "$f"
+	  cat "$f"
+  done
   exit 1
 fi

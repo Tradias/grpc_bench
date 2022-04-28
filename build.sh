@@ -1,8 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
-# Build ghz Docker image.
-# See ghz-tool/Dockerfile for details/version
-docker build -t ghz_bench:latest ./ghz-tool/
+./generate_ci.sh >.github/workflows/build.yml
+
+
+export GRPC_REQUEST_SCENARIO=${GRPC_REQUEST_SCENARIO:-"complex_proto"}
+export GRPC_IMAGE_NAME="${GRPC_IMAGE_NAME:-grpc_bench}"
 
 ## The list of benchmarks to build
 BENCHMARKS_TO_BUILD="${@}"
@@ -20,12 +22,29 @@ build_cpp_base() {
 }
 build_cpp_base
 
+# Setup the chosen scenario
+if ! sh setup_scenario.sh $GRPC_REQUEST_SCENARIO false; then
+	echo "Scenario setup fiascoed."
+	exit 1
+fi
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
 builds=""
 for benchmark in ${BENCHMARKS_TO_BUILD}; do
+	benchmark=${benchmark##*/}
+
 	echo "==> Building Docker image for ${benchmark}..."
 	( (
-		DOCKER_BUILDKIT=1 docker image build --force-rm --file "${benchmark}/Dockerfile" \
-			--tag "${benchmark##*/}" . >"${benchmark}.tmp" 2>&1 &&
+		DOCKER_BUILDKIT=1 docker image build \
+			--force-rm \
+			--pull \
+			--compress \
+			--file "${benchmark}/Dockerfile" \
+			--cache-from="$GRPC_IMAGE_NAME:${benchmark}-$GRPC_REQUEST_SCENARIO" \
+			--build-arg BUILDKIT_INLINE_CACHE=1 \
+			--tag "$GRPC_IMAGE_NAME:${benchmark}-$GRPC_REQUEST_SCENARIO" \
+			. >"${benchmark}.tmp" 2>&1 &&
 			rm -f "${benchmark}.tmp" &&
 			echo "==> Done building ${benchmark}"
 	) || (
