@@ -15,45 +15,35 @@
 #include "helloworld.grpc.pb.h"
 
 #include <agrpc/asioGrpc.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
-#include <unifex/get_allocator.hpp>
-#include <unifex/just.hpp>
-#include <unifex/let_value.hpp>
-#include <unifex/sync_wait.hpp>
-#include <unifex/then.hpp>
-#include <unifex/when_all.hpp>
-#include <unifex/with_query_value.hpp>
 
 #include <forward_list>
+#include <fstream>
 #include <iostream>
 #include <thread>
 #include <vector>
 
-auto spawn_accept_loop(agrpc::GrpcContext &grpc_context,
+void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                        helloworld::Greeter::AsyncService &service) {
-  return unifex::with_query_value(
-      agrpc::repeatedly_request(
-          &helloworld::Greeter::AsyncService::RequestSayHello, service,
-          [&](grpc::ServerContext &, helloworld::HelloRequest &request,
-              grpc::ServerAsyncResponseWriter<helloworld::HelloReply> &writer) {
-            return unifex::let_value(
-                unifex::just(helloworld::HelloReply{}), [&](auto &response) {
-                  *response.mutable_response() =
-                      std::move(*request.mutable_request());
-                  return agrpc::finish(writer, response, grpc::Status::OK,
-                                       agrpc::use_sender(grpc_context));
-                });
-          },
-          agrpc::use_sender(grpc_context)),
-      unifex::get_allocator, grpc_context.get_allocator());
-}
-
-auto run_thread(agrpc::GrpcContext &grpc_context,
-                helloworld::Greeter::AsyncService &service) {
-  return unifex::when_all(
-      spawn_accept_loop(grpc_context, service),
-      unifex::then(unifex::just(), [&]() { grpc_context.run(); }));
+  agrpc::repeatedly_request(
+      &helloworld::Greeter::AsyncService::RequestSayHello, service,
+      agrpc::bind_allocator(
+          grpc_context.get_allocator(),
+          boost::asio::bind_executor(
+              grpc_context,
+              [&](grpc::ServerContext &, helloworld::HelloRequest &request,
+                  grpc::ServerAsyncResponseWriter<helloworld::HelloReply>
+                      &writer) -> boost::asio::awaitable<void> {
+                helloworld::HelloReply response;
+                *response.mutable_response() =
+                    std::move(*request.mutable_request());
+                co_await agrpc::finish(writer, response, grpc::Status::OK);
+              })));
 }
 
 int main() {
@@ -78,17 +68,18 @@ int main() {
 
   std::vector<std::thread> threads;
   threads.reserve(parallelism);
-
   for (size_t i = 0; i < parallelism; ++i) {
     threads.emplace_back([&, i] {
       auto &grpc_context = *std::next(grpc_contexts.begin(), i);
-      unifex::sync_wait(run_thread(grpc_context, service));
+      spawn_accept_loop(grpc_context, service);
+      boost::asio::io_context io_context{1};
+      agrpc::PollContext poll_context{io_context.get_executor()};
+      poll_context.async_poll(grpc_context);
+      io_context.run();
     });
   }
 
   for (auto &thread : threads) {
     thread.join();
   }
-
-  server->Shutdown();
 }

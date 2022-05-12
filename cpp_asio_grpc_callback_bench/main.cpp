@@ -37,7 +37,8 @@ template <class Executor, class Allocator> struct Spawner {
   template <class T>
   void operator()(agrpc::RepeatedlyRequestContext<T> &&request_context) {
     helloworld::HelloReply response;
-    response.set_message(std::move(*request_context.request().mutable_name()));
+    *response.mutable_response() =
+        std::move(*request_context.request().mutable_request());
     auto &writer = request_context.responder();
     agrpc::finish(
         writer, response, grpc::Status::OK,

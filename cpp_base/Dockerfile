@@ -4,17 +4,17 @@ RUN apt-get update && apt-get install -y \
     wget \
     make \
     git \
-    libjemalloc2
+    libjemalloc-dev
 
 WORKDIR /app
 
-ARG CMAKE_VERSION=3.21.2
+ARG CMAKE_VERSION=3.23.1
 RUN wget --no-verbose https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh \
     && chmod +x ./cmake-${CMAKE_VERSION}-linux-x86_64.sh \
     && ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/usr \
     && rm ./cmake-${CMAKE_VERSION}-linux-x86_64.sh
 
-ARG GRPC_VERSION=1.43.2
+ARG GRPC_VERSION=1.45.2
 RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://github.com/grpc/grpc.git \
     && cd /app/grpc \
     && cmake -B ./build \
@@ -32,11 +32,6 @@ RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://g
         -DCMAKE_CXX_STANDARD=17 \
     && cmake --build ./build --target install --parallel=4 \
     && rm -rf /app/grpc
-
-COPY proto /app/proto
-RUN mkdir gen \
-    && protoc --proto_path=/app/proto/helloworld --cpp_out=gen helloworld.proto \
-    && protoc --proto_path=/app/proto/helloworld --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` helloworld.proto
 
 EXPOSE 50051
 

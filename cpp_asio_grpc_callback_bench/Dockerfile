@@ -10,27 +10,24 @@ RUN git clone https://github.com/Tradias/asio-grpc.git \
     && git checkout v1.6.0 \
     && cmake -B ./build \
     && cmake --build ./build --target install
-    
+
 RUN git clone https://github.com/microsoft/vcpkg.git \
     && ./vcpkg/bootstrap-vcpkg.sh \
-    && ./vcpkg/vcpkg install libunifex \
+    && ./vcpkg/vcpkg install boost-asio \
     && ./vcpkg/vcpkg integrate install
-RUN wget https://raw.githubusercontent.com/facebookexperimental/libunifex/main/cmake/FindCoroutines.cmake
 
 COPY proto /app/proto
 RUN mkdir gen \
     && protoc --proto_path=/app/proto/helloworld --cpp_out=gen helloworld.proto \
     && protoc --proto_path=/app/proto/helloworld --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` helloworld.proto
 
-COPY cpp_asio_grpc_unifex_bench /app
+COPY cpp_asio_grpc_callback_bench /app
 
 RUN cmake \
         -B build \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/app/out \
         -DCMAKE_TOOLCHAIN_FILE=/app/vcpkg/scripts/buildsystems/vcpkg.cmake \
-        -DCMAKE_MODULE_PATH=/app \
-        -DCMAKE_CXX_STANDARD=20 \
     && cmake --build ./build --config Release --target install
 
-ENTRYPOINT LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /app/out/bin/cpp_asio_grpc_unifex_bench
+ENTRYPOINT LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /app/out/bin/cpp_asio_grpc_callback_bench

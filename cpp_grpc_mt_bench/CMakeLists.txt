@@ -14,7 +14,7 @@ target_sources(
   PRIVATE main.cpp "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.pb.cc"
           "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.grpc.pb.cc")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE gRPC::grpc++_unsecure)
+target_link_libraries(${PROJECT_NAME} PRIVATE gRPC::grpc++_unsecure jemalloc)
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE "${CMAKE_CURRENT_LIST_DIR}/gen")

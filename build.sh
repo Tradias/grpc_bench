@@ -14,7 +14,7 @@ BENCHMARKS_TO_BUILD="${BENCHMARKS_TO_BUILD:-$(find . -maxdepth 1 -name '*_bench'
 build_cpp_base() {
     for benchmark in ${BENCHMARKS_TO_BUILD}; do
         case $benchmark in
-            cpp_*) docker build --file "./cpp_base/Dockerfile" --tag grpc_bench_cpp_base .
+            cpp_*) DOCKER_BUILDKIT=1 docker build --file "./cpp_base/Dockerfile" --tag grpc-bench-cpp-base .
             return 0
             ;;
         esac
@@ -38,7 +38,6 @@ for benchmark in ${BENCHMARKS_TO_BUILD}; do
 	( (
 		DOCKER_BUILDKIT=1 docker image build \
 			--force-rm \
-			--pull \
 			--compress \
 			--file "${benchmark}/Dockerfile" \
 			--cache-from="$GRPC_IMAGE_NAME:${benchmark}-$GRPC_REQUEST_SCENARIO" \
