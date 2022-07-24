@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 project(
-  cpp_asio_grpc_poll_context_coro_bench
+  cpp_asio_grpc_io_context_coro_bench
   DESCRIPTION "Benchmark for asio-grpc with agrpc::PollContext"
   HOMEPAGE_URL https://github.com/Tradias/asio-grpc
   LANGUAGES CXX)

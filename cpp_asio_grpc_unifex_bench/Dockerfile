@@ -7,7 +7,7 @@ WORKDIR /app
 
 RUN git clone https://github.com/Tradias/asio-grpc.git \
     && cd asio-grpc \
-    && git checkout v1.6.0 \
+    && git checkout v2.0.0 \
     && cmake -B ./build \
     && cmake --build ./build --target install
     

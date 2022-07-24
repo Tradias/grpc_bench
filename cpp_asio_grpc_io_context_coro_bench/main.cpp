@@ -14,11 +14,12 @@
 
 #include "helloworld.grpc.pb.h"
 
-#include <agrpc/asioGrpc.hpp>
-#include <boost/asio/io_context.hpp>
+#include <agrpc/asio_grpc.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
@@ -73,8 +74,8 @@ int main() {
       auto &grpc_context = *std::next(grpc_contexts.begin(), i);
       spawn_accept_loop(grpc_context, service);
       boost::asio::io_context io_context{1};
-      agrpc::PollContext poll_context{io_context.get_executor()};
-      poll_context.async_poll(grpc_context);
+      boost::asio::post(io_context,
+                        [&] { agrpc::run(grpc_context, io_context); });
       io_context.run();
     });
   }

@@ -1,4 +1,4 @@
-FROM gcc:11
+FROM gcc:12
 
 RUN apt-get update && apt-get install -y \
     wget \
@@ -14,7 +14,7 @@ RUN wget --no-verbose https://github.com/Kitware/CMake/releases/download/v${CMAK
     && ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/usr \
     && rm ./cmake-${CMAKE_VERSION}-linux-x86_64.sh
 
-ARG GRPC_VERSION=1.45.2
+ARG GRPC_VERSION=1.48.0
 RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://github.com/grpc/grpc.git \
     && cd /app/grpc \
     && cmake -B ./build \
@@ -30,7 +30,7 @@ RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://g
         -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=off \
         -DgRPC_BUILD_GRPC_RUBY_PLUGIN=off \
         -DCMAKE_CXX_STANDARD=17 \
-    && cmake --build ./build --target install --parallel=4 \
+    && cmake --build ./build --target install --config Release --parallel=4 \
     && rm -rf /app/grpc
 
 EXPOSE 50051

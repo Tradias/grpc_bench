@@ -7,7 +7,7 @@ WORKDIR /app
 
 RUN git clone https://github.com/Tradias/asio-grpc.git \
     && cd asio-grpc \
-    && git checkout v1.6.0 \
+    && git checkout v2.0.0 \
     && cmake -B ./build \
     && cmake --build ./build --target install
 
@@ -21,7 +21,7 @@ RUN mkdir gen \
     && protoc --proto_path=/app/proto/helloworld --cpp_out=gen helloworld.proto \
     && protoc --proto_path=/app/proto/helloworld --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` helloworld.proto
 
-COPY cpp_asio_grpc_poll_context_coro_bench /app
+COPY cpp_asio_grpc_io_context_coro_bench /app
 
 RUN cmake \
         -B build \
@@ -30,4 +30,4 @@ RUN cmake \
         -DCMAKE_TOOLCHAIN_FILE=/app/vcpkg/scripts/buildsystems/vcpkg.cmake \
     && cmake --build ./build --config Release --target install
 
-ENTRYPOINT LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /app/out/bin/cpp_asio_grpc_poll_context_coro_bench
+ENTRYPOINT LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /app/out/bin/cpp_asio_grpc_io_context_coro_bench
