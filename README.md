@@ -1,9 +1,12 @@
+<p align="center">
+<img width="583" alt="image" src="https://user-images.githubusercontent.com/9642092/189478887-a9ad0a81-8cdc-4983-8954-80347feb002e.png">
+
 ![CI](https://github.com/LesnyRumcajs/grpc_bench/actions/workflows/build.yml/badge.svg)
 [<img alt="Discord" src="https://img.shields.io/discord/932736311733915668.svg?style=for-the-badge&label=Discord&logo=discord" height="20">](https://discord.gg/NAjC2RRdPg)
 
 One repo to finally have a clear, objective gRPC benchmark with code for everyone to verify and improve.
 
-Contributions are most welcome!
+Contributions are most welcome! Feel free to use [discussions](https://github.com/LesnyRumcajs/grpc_bench/discussions) if you have questions/issues or ideas. There is also a [category](https://github.com/LesnyRumcajs/grpc_bench/discussions/categories/benchmark-results) where you are encouraged to submit your own benchmark results!
 
 See [Nexthink blog post](https://www.nexthink.com/blog/comparing-grpc-performance/) for a deeper overview of the project and recent results.
 
@@ -70,6 +73,6 @@ The benchmark can be configured through the following environment variables:
 Other parameters will depend on your use-case. Choose wisely.
 
 # Results
-You can find our sample results in the [Wiki](https://github.com/LesnyRumcajs/grpc_bench/wiki). Be sure to run the benchmarks yourself if you have sufficient hardware, especially for multi-core scenarios.
+You can find our old sample results in the [Wiki](https://github.com/LesnyRumcajs/grpc_bench/wiki). Be sure to run the benchmarks yourself if you have sufficient hardware, especially for multi-core scenarios. New results will be posted to [discussions](https://github.com/LesnyRumcajs/grpc_bench/discussions/categories/benchmark-results) and you are encouraged to publish yours as well!
 
 
