@@ -8,13 +8,13 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-ARG CMAKE_VERSION=3.23.1
+ARG CMAKE_VERSION=3.24.2
 RUN wget --no-verbose https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh \
     && chmod +x ./cmake-${CMAKE_VERSION}-linux-x86_64.sh \
     && ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/usr \
     && rm ./cmake-${CMAKE_VERSION}-linux-x86_64.sh
 
-ARG GRPC_VERSION=1.48.0
+ARG GRPC_VERSION=1.50.0
 RUN git clone --depth 1 --recurse-submodules --branch v${GRPC_VERSION} https://github.com/grpc/grpc.git \
     && cd /app/grpc \
     && cmake -B ./build \
