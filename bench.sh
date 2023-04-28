@@ -17,6 +17,7 @@ export GRPC_CLIENT_QPS=$(( GRPC_CLIENT_QPS / GRPC_CLIENT_CONCURRENCY ))
 export GRPC_CLIENT_CPUS=${GRPC_CLIENT_CPUS:-"1"}
 export GRPC_REQUEST_SCENARIO=${GRPC_REQUEST_SCENARIO:-"complex_proto"}
 export GRPC_IMAGE_NAME="${GRPC_IMAGE_NAME:-grpc_bench}"
+export GRPC_USE_CLIENT_STREAMING=${GRPC_USE_CLIENT_STREAMING:-"false"}
 
 # Let containers know how many CPUs they will be running on
 # Additionally export other vars for further analysis script.
@@ -98,12 +99,19 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
 
 	# Start the gRPC Client
-	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" \
+    if [[ "${GRPC_USE_CLIENT_STREAMING}" != "false" ]]; then
+		proto="/proto2/streaming/stream.proto"
+		call="streaming.Stream.ClientStreaming"
+    else
+		proto="/proto/helloworld/helloworld.proto"
+		call="helloworld.Greeter.SayHello"
+    fi
+	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" -v "${PWD}/proto2:/proto2:ro" \
 	    -v "${PWD}/payload:/payload:ro" \
 		--cpus $GRPC_CLIENT_CPUS \
     obvionaoe/ghz:v0.103.0 \
-		--proto=/proto/helloworld/helloworld.proto \
-		--call=helloworld.Greeter.SayHello \
+		--proto=${proto} \
+		--call=${call} \
         --insecure \
         --concurrency="${GRPC_CLIENT_CONCURRENCY}" \
         --connections="${GRPC_CLIENT_CONNECTIONS}" \

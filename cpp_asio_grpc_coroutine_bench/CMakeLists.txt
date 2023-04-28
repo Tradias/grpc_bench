@@ -13,8 +13,13 @@ add_executable(${PROJECT_NAME})
 
 target_sources(
   ${PROJECT_NAME}
-  PRIVATE main.cpp "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.pb.cc"
-          "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.grpc.pb.cc")
+  PRIVATE main.cpp
+          "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.grpc.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/grpc/health/v1/health.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/grpc/health/v1/health.grpc.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/streaming/stream.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/streaming/stream.grpc.pb.cc")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE asio-grpc::asio-grpc jemalloc)
 

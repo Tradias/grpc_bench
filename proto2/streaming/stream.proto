@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "proto/streaming";
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.streaming";
+option java_outer_classname = "StreamingProto";
+option objc_class_prefix = "HLW";
+
+package streaming;
+
+service Stream {
+  rpc ClientStreaming (stream Request) returns (Response) {}
+}
+
+message Hello {
+  string name = 1;
+}
+
+message Request {
+  Hello request = 1;
+}
+
+message Response {
+  Hello response = 1;
+}

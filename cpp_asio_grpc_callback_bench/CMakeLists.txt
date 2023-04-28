@@ -9,21 +9,19 @@ project(
 find_package(protobuf REQUIRED)
 find_package(asio-grpc CONFIG REQUIRED)
 
-include(FindPkgConfig)
-pkg_check_modules(jemalloc IMPORTED_TARGET GLOBAL jemalloc)
-pkg_search_module(jemalloc REQUIRED jemalloc)
-
-
 add_executable(${PROJECT_NAME})
 
 target_sources(
   ${PROJECT_NAME}
-  PRIVATE main.cpp "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.pb.cc"
-          "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.grpc.pb.cc")
+  PRIVATE main.cpp
+          "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/helloworld.grpc.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/grpc/health/v1/health.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/grpc/health/v1/health.grpc.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/streaming/stream.pb.cc"
+          "${CMAKE_CURRENT_LIST_DIR}/gen/streaming/stream.grpc.pb.cc")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE asio-grpc::asio-grpc jemalloc)
-
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE "${CMAKE_CURRENT_LIST_DIR}/gen")

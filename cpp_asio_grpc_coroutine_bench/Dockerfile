@@ -7,7 +7,7 @@ WORKDIR /app
 
 RUN git clone https://github.com/Tradias/asio-grpc.git \
     && cd asio-grpc \
-    && git checkout v2.0.0 \
+    && git checkout v2.5.1 \
     && cmake -B ./build \
     && cmake --build ./build --target install
 
@@ -17,9 +17,15 @@ RUN git clone https://github.com/microsoft/vcpkg.git \
     && ./vcpkg/vcpkg integrate install
 
 COPY proto /app/proto
+COPY proto2 /app/proto
+
 RUN mkdir gen \
     && protoc --proto_path=/app/proto/helloworld --cpp_out=gen helloworld.proto \
-    && protoc --proto_path=/app/proto/helloworld --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` helloworld.proto
+    && protoc --proto_path=/app/proto/helloworld --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` helloworld.proto \
+    && protoc --proto_path=/app/proto --cpp_out=gen /app/proto/grpc/health/v1/health.proto \
+    && protoc --proto_path=/app/proto --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` /app/proto/grpc/health/v1/health.proto \
+    && protoc --proto_path=/app/proto --cpp_out=gen /app/proto/streaming/stream.proto \
+    && protoc --proto_path=/app/proto --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` /app/proto/streaming/stream.proto
 
 COPY cpp_asio_grpc_coroutine_bench /app
 

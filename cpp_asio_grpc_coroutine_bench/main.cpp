@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "helloworld.grpc.pb.h"
+#include "streaming/stream.grpc.pb.h"
 
 #include <agrpc/asio_grpc.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -44,12 +45,33 @@ void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
               })));
 }
 
+void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
+                       streaming::Stream::AsyncService &service) {
+  agrpc::repeatedly_request(
+      &streaming::Stream::AsyncService::RequestClientStreaming, service,
+      agrpc::bind_allocator(
+          grpc_context.get_allocator(),
+          boost::asio::bind_executor(
+              grpc_context,
+              [&](grpc::ServerContext &,
+                  auto &reader) -> boost::asio::awaitable<void> {
+                streaming::Request request;
+                while (co_await agrpc::read(reader, request))
+                  ;
+                streaming::Response response;
+                *response.mutable_response() =
+                    std::move(*request.mutable_request());
+                co_await agrpc::finish(reader, response, grpc::Status::OK);
+              })));
+}
+
 int main() {
   std::string server_address("0.0.0.0:50051");
 
   grpc::ServerBuilder builder;
   std::unique_ptr<grpc::Server> server;
   helloworld::Greeter::AsyncService service;
+  streaming::Stream::AsyncService streaming_service;
 
   const auto env = std::getenv("GRPC_SERVER_CPUS");
   const auto parallelism =
@@ -61,6 +83,7 @@ int main() {
 
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&service);
+  builder.RegisterService(&streaming_service);
   server = builder.BuildAndStart();
   std::cout << "Server listening on " << server_address << std::endl;
 
@@ -70,6 +93,7 @@ int main() {
     threads.emplace_back([&, i] {
       auto &grpc_context = *std::next(grpc_contexts.begin(), i);
       spawn_accept_loop(grpc_context, service);
+      spawn_accept_loop(grpc_context, streaming_service);
       grpc_context.run();
     });
   }
