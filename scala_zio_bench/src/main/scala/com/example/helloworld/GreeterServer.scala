@@ -1,14 +1,18 @@
 package com.example.helloworld
 
-import scalapb.zio_grpc.{ServerMain, ServiceList}
+import scalapb.zio_grpc.{Server, ServerLayer, ServerMain, ServiceList}
+import zio.ZLayer
 
 import java.util.concurrent.Executors
 
 object GreeterServer extends ServerMain {
-  def services = ServiceList.add(GreeterImpl)
+  def services: ServiceList[Any] = ServiceList.add(GreeterImpl)
 
-  override def builder = {
-    val sb = super.builder
+  // Default port is 9000
+  override def port = 50051
+
+  override def serverLive: ZLayer[Any, Throwable, Server] = {
+    val sb = builder
 
     /**
      * Allow customization of the Executor with two environment variables:
@@ -16,7 +20,7 @@ object GreeterServer extends ServerMain {
      * <p>
      * <ul>
      * <li>JVM_EXECUTOR_TYPE: direct, workStealing, single, fixed, cached</li>
-     * <li>JVM_EXECUTOR_THREADS: integer value.</li>
+     * <li>GRPC_SERVER_CPUS: integer value.</li>
      * </ul>
      * </p>
      *
@@ -24,10 +28,9 @@ object GreeterServer extends ServerMain {
      * availableProcessors(). Only the workStealing and fixed executors will use
      * this value.
      */
-    val threads = System.getenv("JVM_EXECUTOR_THREADS")
+    val threads = System.getenv("GRPC_SERVER_CPUS")
     var i_threads = Runtime.getRuntime.availableProcessors
-    if (threads != null && threads.nonEmpty) i_threads = threads.toInt
-
+    if (threads != null && !threads.isEmpty) i_threads = threads.toInt
     val value = System.getenv.getOrDefault("JVM_EXECUTOR_TYPE", "workStealing")
     value match {
       case "direct" => sb.directExecutor
@@ -36,9 +39,7 @@ object GreeterServer extends ServerMain {
       case "workStealing" => sb.executor(Executors.newWorkStealingPool(i_threads))
       case "cached" => sb.executor(Executors.newCachedThreadPool)
     }
-    sb
-  }
 
-  // Default port is 9000
-  override def port = 50051
+    ServerLayer.fromServiceList(sb, services)
+  }
 }

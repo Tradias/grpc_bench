@@ -5,7 +5,7 @@ BENCHMARKS_TO_RUN="${@}"
 ##  ...or use all the *_bench dirs by default
 BENCHMARKS_TO_RUN="${BENCHMARKS_TO_RUN:-$(find . -maxdepth 1 -name '*_bench' -type d | sort)}"
 
-RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
+RESULTS_DIR="results/$(date '+%y%m%dT%H%M%S')"
 export GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"20s"}
 export GRPC_BENCHMARK_WARMUP=${GRPC_BENCHMARK_WARMUP:-"5s"}
 export GRPC_SERVER_CPUS=${GRPC_SERVER_CPUS:-"1"}
@@ -17,6 +17,7 @@ export GRPC_CLIENT_QPS=$(( GRPC_CLIENT_QPS / GRPC_CLIENT_CONCURRENCY ))
 export GRPC_CLIENT_CPUS=${GRPC_CLIENT_CPUS:-"1"}
 export GRPC_REQUEST_SCENARIO=${GRPC_REQUEST_SCENARIO:-"complex_proto"}
 export GRPC_IMAGE_NAME="${GRPC_IMAGE_NAME:-grpc_bench}"
+export GRPC_GHZ_TAG="${GRPC_GHZ_TAG:-0.114.0}"
 export GRPC_USE_CLIENT_STREAMING=${GRPC_USE_CLIENT_STREAMING:-"false"}
 
 # Let containers know how many CPUs they will be running on
@@ -76,9 +77,11 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
     	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" \
     	    -v "${PWD}/payload:/payload:ro" \
     		--cpus $GRPC_CLIENT_CPUS \
-    	  obvionaoe/ghz:v0.103.0 \
+        ghcr.io/bojand/ghz:"${GRPC_GHZ_TAG}" \
     		--proto=/proto/helloworld/helloworld.proto \
     		--call=helloworld.Greeter.SayHello \
+            --disable-template-functions \
+            --disable-template-data \
             --insecure \
             --concurrency="${GRPC_CLIENT_CONCURRENCY}" \
             --connections="${GRPC_CLIENT_CONNECTIONS}" \
@@ -109,9 +112,11 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" -v "${PWD}/proto2:/proto2:ro" \
 	    -v "${PWD}/payload:/payload:ro" \
 		--cpus $GRPC_CLIENT_CPUS \
-    obvionaoe/ghz:v0.103.0 \
-		--proto=${proto} \
-		--call=${call} \
+    ghcr.io/bojand/ghz:"${GRPC_GHZ_TAG}" \
+		--proto=/proto/helloworld/helloworld.proto \
+		--call=helloworld.Greeter.SayHello \
+        --disable-template-functions \
+        --disable-template-data \
         --insecure \
         --concurrency="${GRPC_CLIENT_CONCURRENCY}" \
         --connections="${GRPC_CLIENT_CONNECTIONS}" \

@@ -18,7 +18,7 @@ jobs:
   meta-check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - run: ./generate_ci.sh | tee .github/workflows/build.yml
     - run: git --no-pager diff --exit-code
 
@@ -42,13 +42,13 @@ jobs:
       base: \${{ steps.base.outputs.base }}
     steps:
     - name: Deep checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
     - name: Get changed files
       id: finder
-      uses: tj-actions/changed-files@v13.1
+      uses: tj-actions/changed-files@v44
 
     - name: Output whether base changed
       id: base
@@ -81,7 +81,7 @@ while read -r bench; do
     if: fromJSON(needs.changed.outputs.base) || contains(needs.changed.outputs.files, '$bench/')
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Build $bench
       run: ./build.sh $bench
@@ -96,7 +96,7 @@ while read -r bench; do
 
     - if: github.ref == 'refs/heads/master'
       name: Log in to GitHub Container Registry
-      uses: docker/login-action@v1
+      uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: \${{ github.actor }}
@@ -110,4 +110,4 @@ while read -r bench; do
 
 EOF
 
-done < <(find . -maxdepth 1 -type d -name '*_bench' | sort)
+done < <(find . -maxdepth 1 -type d -name '*_bench' | sort --version-sort)

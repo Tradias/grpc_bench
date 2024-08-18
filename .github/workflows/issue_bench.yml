@@ -10,12 +10,12 @@ jobs:
     if: startsWith(github.event.issue.title, 'RUN BENCHMARK')
     steps:
     - name: Accept the task
-      uses: peter-evans/create-or-update-comment@v1
+      uses: peter-evans/create-or-update-comment@v4
       with:
         issue-number: ${{ github.event.issue.number }}  
         body: |
           Serving the benchmark. I will update the issue when it's finished. 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Build images
       run: ./build.sh
     - name: Run tests
@@ -30,7 +30,7 @@ jobs:
       env:
         GRPC_BENCHMARK_DURATION: ${{github.event.issue.body}}
     - name: Close Issue
-      uses: peter-evans/close-issue@v1
+      uses: peter-evans/close-issue@v3
       with:
         comment: |
           Here you go!

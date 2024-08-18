@@ -5,7 +5,7 @@ import com.google.protobuf.gradle.plugins
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
 
-val grpcVersion = "1.49.0"
+val grpcVersion = "1.58.0"
 val grpcKotlinVersion = "1.3.0"
 val protobufVersion = "3.21.5"
 val coroutinesVersion = "1.6.4"
@@ -61,17 +61,17 @@ java {
 }
 
 application {
-    mainClassName = "io.grpc.examples.helloworld.HelloWorldServerKt"
+    mainClass.set("io.grpc.examples.helloworld.HelloWorldServerKt")
 }
 
 tasks.register<JavaExec>("HelloWorldServer") {
     dependsOn("classes")
     classpath = sourceSets["main"].runtimeClasspath
-    main = "io.grpc.examples.helloworld.HelloWorldServerKt"
+    mainClass.set("io.grpc.examples.helloworld.HelloWorldServerKt")
 }
 
 val helloWorldServerStartScripts = tasks.register<CreateStartScripts>("helloWorldServerStartScripts") {
-    mainClassName = "io.grpc.examples.helloworld.HelloWorldServerKt"
+    mainClass.set("io.grpc.examples.helloworld.HelloWorldServerKt")
     applicationName = "hello-world-server"
     outputDir = tasks.named<CreateStartScripts>("startScripts").get().outputDir
     classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath

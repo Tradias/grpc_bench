@@ -1,10 +1,10 @@
-FROM swift:5.7.0 AS builder
+FROM swift:5.8 AS builder
 
 WORKDIR /app
 
 # Getting protoc-gen-swift and protoc-gen-grpc-swift
 RUN apt update && apt install -y protobuf-compiler git make
-RUN git clone --depth 1 https://github.com/grpc/grpc-swift
+RUN git clone --depth 1 --single-branch --branch 1.21.0 https://github.com/grpc/grpc-swift
 WORKDIR /app/grpc-swift
 RUN make plugins
 RUN cp /app/grpc-swift/protoc-* /usr/local/bin
@@ -21,7 +21,7 @@ RUN protoc --proto_path=/app/proto/helloworld --plugin=/usr/local/bin/protoc-gen
 RUN swift package resolve
 RUN swift build -c release -Xswiftc -enforce-exclusivity=unchecked
 
-FROM swift:5.7.0
+FROM swift:5.8
 WORKDIR /app
 RUN mkdir /app/.build
 COPY --from=builder /app/.build /app/.build
