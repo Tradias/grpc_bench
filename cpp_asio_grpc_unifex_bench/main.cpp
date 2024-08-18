@@ -19,7 +19,7 @@
 #include <grpcpp/server_builder.h>
 #include <unifex/get_allocator.hpp>
 #include <unifex/just.hpp>
-#include <unifex/let_value.hpp>
+#include <unifex/let_value_with.hpp>
 #include <unifex/sync_wait.hpp>
 #include <unifex/then.hpp>
 #include <unifex/when_all.hpp>
@@ -30,6 +30,26 @@
 #include <thread>
 #include <vector>
 
+auto spawn_accept_loop(agrpc::GrpcContext &grpc_context,
+                       helloworld::Greeter::AsyncService &service) {
+  using RPC =
+      agrpc::ServerRPC<&helloworld::Greeter::AsyncService::RequestSayHello>;
+  return unifex::with_query_value(
+      agrpc::register_sender_rpc_handler<RPC>(
+          grpc_context, service,
+          [&](RPC &rpc, helloworld::HelloRequest &request) {
+            return unifex::let_value_with(
+                [] { return helloworld::HelloReply{}; },
+                [&](auto &response) {
+                  *response.mutable_response() =
+                      std::move(*request.mutable_request());
+                  return rpc.finish(response, grpc::Status::OK);
+                });
+          }),
+      unifex::get_allocator, grpc_context.get_allocator());
+}
+
+#if 0
 auto spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                        helloworld::Greeter::AsyncService &service) {
   return unifex::with_query_value(
@@ -48,6 +68,7 @@ auto spawn_accept_loop(agrpc::GrpcContext &grpc_context,
           agrpc::use_sender(grpc_context)),
       unifex::get_allocator, grpc_context.get_allocator());
 }
+#endif
 
 auto run_thread(agrpc::GrpcContext &grpc_context,
                 helloworld::Greeter::AsyncService &service) {

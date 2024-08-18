@@ -19,6 +19,7 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/bind_allocator.hpp>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
@@ -29,9 +30,28 @@
 
 void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                        helloworld::Greeter::AsyncService &service) {
+  using RPC =
+      agrpc::ServerRPC<&helloworld::Greeter::AsyncService::RequestSayHello>;
+  agrpc::register_awaitable_rpc_handler<RPC>(
+      grpc_context, service,
+      [&](RPC &rpc, RPC::Request &request) -> boost::asio::awaitable<void> {
+        RPC::Response response;
+        *response.mutable_response() = std::move(*request.mutable_request());
+        co_await rpc.finish(
+            response, grpc::Status::OK,
+            boost::asio::bind_executor(boost::asio::system_executor{},
+                                       boost::asio::use_awaitable));
+      },
+      boost::asio::bind_allocator(grpc_context.get_allocator(),
+                            boost::asio::detached));
+}
+
+#if 0
+void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
+                       helloworld::Greeter::AsyncService &service) {
   agrpc::repeatedly_request(
       &helloworld::Greeter::AsyncService::RequestSayHello, service,
-      agrpc::bind_allocator(
+      boost::asio::bind_allocator(
           grpc_context.get_allocator(),
           boost::asio::bind_executor(
               grpc_context,
@@ -44,25 +64,25 @@ void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                 co_await agrpc::finish(writer, response, grpc::Status::OK);
               })));
 }
+#endif
 
 void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                        streaming::Stream::AsyncService &service) {
-  agrpc::repeatedly_request(
-      &streaming::Stream::AsyncService::RequestClientStreaming, service,
-      agrpc::bind_allocator(
-          grpc_context.get_allocator(),
-          boost::asio::bind_executor(
-              grpc_context,
-              [&](grpc::ServerContext &,
-                  auto &reader) -> boost::asio::awaitable<void> {
-                streaming::Request request;
-                while (co_await agrpc::read(reader, request))
-                  ;
-                streaming::Response response;
-                *response.mutable_response() =
-                    std::move(*request.mutable_request());
-                co_await agrpc::finish(reader, response, grpc::Status::OK);
-              })));
+  using RPC = agrpc::ServerRPC<
+      &streaming::Stream::AsyncService::RequestClientStreaming>;
+  agrpc::register_awaitable_rpc_handler<RPC>(
+      grpc_context, service,
+      [&](RPC &rpc) -> boost::asio::awaitable<void> {
+        streaming::Request request;
+        while (co_await rpc.read(request, boost::asio::use_awaitable))
+          ;
+        streaming::Response response;
+        *response.mutable_response() = std::move(*request.mutable_request());
+        co_await rpc.finish(response, grpc::Status::OK,
+                            boost::asio::use_awaitable);
+      },
+      boost::asio::bind_allocator(grpc_context.get_allocator(),
+                            boost::asio::detached));
 }
 
 int main() {

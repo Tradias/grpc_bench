@@ -23,6 +23,7 @@
 
 #include <grpcpp/grpcpp.h>
 #include <grpc/support/log.h>
+#include <grpcpp/health_check_service_interface.h>
 
 #ifdef BAZEL_BUILD
 #include "examples/protos/helloworld.grpc.pb.h"
@@ -172,6 +173,7 @@ class ServerImpl final {
 };
 
 int main(int argc, char** argv) {
+  // grpc::EnableDefaultHealthCheckService(true);
   ServerImpl server;
   server.Run();
 

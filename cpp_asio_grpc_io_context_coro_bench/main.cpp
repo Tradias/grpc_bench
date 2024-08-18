@@ -20,6 +20,8 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/asio/bind_allocator.hpp>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
@@ -31,20 +33,18 @@
 
 void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                        helloworld::Greeter::AsyncService &service) {
-  agrpc::repeatedly_request(
-      &helloworld::Greeter::AsyncService::RequestSayHello, service,
-      agrpc::bind_allocator(
-          grpc_context.get_allocator(),
-          boost::asio::bind_executor(
-              grpc_context,
-              [&](grpc::ServerContext &, helloworld::HelloRequest &request,
-                  grpc::ServerAsyncResponseWriter<helloworld::HelloReply>
-                      &writer) -> boost::asio::awaitable<void> {
-                helloworld::HelloReply response;
-                *response.mutable_response() =
-                    std::move(*request.mutable_request());
-                co_await agrpc::finish(writer, response, grpc::Status::OK);
-              })));
+  using RPC =
+      agrpc::ServerRPC<&helloworld::Greeter::AsyncService::RequestSayHello>;
+  agrpc::register_awaitable_rpc_handler<RPC>(
+      grpc_context, service,
+      [&](RPC &rpc, RPC::Request &request) -> boost::asio::awaitable<void> {
+        RPC::Response response;
+        *response.mutable_response() = std::move(*request.mutable_request());
+        co_await rpc.finish(response, grpc::Status::OK,
+                            boost::asio::use_awaitable);
+      },
+      boost::asio::bind_allocator(grpc_context.get_allocator(),
+                            boost::asio::detached));
 }
 
 int main() {

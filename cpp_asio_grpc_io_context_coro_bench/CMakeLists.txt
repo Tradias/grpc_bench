@@ -8,6 +8,7 @@ project(
 
 find_package(protobuf REQUIRED)
 find_package(asio-grpc CONFIG REQUIRED)
+find_package(Boost REQUIRED)
 
 add_executable(${PROJECT_NAME})
 
@@ -19,7 +20,7 @@ target_sources(
           "${CMAKE_CURRENT_LIST_DIR}/gen/grpc/health/v1/health.pb.cc"
           "${CMAKE_CURRENT_LIST_DIR}/gen/grpc/health/v1/health.grpc.pb.cc")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE asio-grpc::asio-grpc jemalloc)
+target_link_libraries(${PROJECT_NAME} PRIVATE asio-grpc::asio-grpc jemalloc Boost::headers)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 

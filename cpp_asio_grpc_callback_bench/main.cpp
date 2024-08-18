@@ -16,7 +16,8 @@
 #include "streaming/stream.grpc.pb.h"
 
 #include <agrpc/asio_grpc.hpp>
-#include <boost/asio/spawn.hpp>
+#include <boost/asio/detached.hpp>
+#include <boost/asio/bind_allocator.hpp>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
@@ -25,68 +26,42 @@
 #include <thread>
 #include <vector>
 
-template <class Handler, class Executor, class Allocator> struct Spawner {
-  using executor_type = Executor;
-  using allocator_type = Allocator;
-
-  Executor executor;
-  Allocator allocator;
-  Handler handler;
-
-  Spawner(Executor executor, Allocator allocator, Handler handler)
-      : executor(std::move(executor)), allocator(allocator), handler(handler) {}
-
-  template <class T>
-  void operator()(agrpc::RepeatedlyRequestContext<T> &&request_context) {
-    handler(std::move(request_context), get_executor());
-  }
-
-  executor_type get_executor() const noexcept { return executor; }
-
-  allocator_type get_allocator() const noexcept { return allocator; }
-};
-
 void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                        helloworld::Greeter::AsyncService &service) {
-  agrpc::repeatedly_request(
-      &helloworld::Greeter::AsyncService::RequestSayHello, service,
-      Spawner{grpc_context.get_executor(), grpc_context.get_allocator(),
-              [](auto &&request_context, auto executor) {
-                helloworld::HelloReply response;
-                *response.mutable_response() =
-                    std::move(*request_context.request().mutable_request());
-                auto &responder = request_context.responder();
-                agrpc::finish(
-                    responder, response, grpc::Status::OK,
-                    boost::asio::bind_executor(
-                        executor, [c = std::move(request_context)](bool) {}));
-              }});
+  using RPC =
+      agrpc::ServerRPC<&helloworld::Greeter::AsyncService::RequestSayHello>;
+  agrpc::register_callback_rpc_handler<RPC>(
+      grpc_context, service,
+      [](RPC::Ptr ptr, RPC::Request &request) mutable {
+        helloworld::HelloReply response;
+        *response.mutable_response() = std::move(*request.mutable_request());
+        auto &rpc = *ptr;
+        rpc.finish(response, grpc::Status::OK, [c = std::move(ptr)](bool) {});
+      },
+      boost::asio::bind_allocator(grpc_context.get_allocator(),
+                            boost::asio::detached));
 }
 
 void spawn_accept_loop(agrpc::GrpcContext &grpc_context,
                        streaming::Stream::AsyncService &service) {
-  agrpc::repeatedly_request(
-      &streaming::Stream::AsyncService::RequestClientStreaming, service,
-      Spawner{grpc_context.get_executor(), grpc_context.get_allocator(),
-              [](auto &&request_context, auto executor) {
-                auto request_ptr = std::make_unique<streaming::Request>();
-                auto &request = *request_ptr;
-                auto &responder = request_context.responder();
-                agrpc::read(
-                    responder, request,
-                    boost::asio::bind_executor(
-                        executor, [executor, c = std::move(request_context),
-                                   p = std::move(request_ptr)](bool) mutable {
-                          streaming::Response response;
-                          *response.mutable_response() =
-                              std::move(*p->mutable_request());
-                          auto &responder = c.responder();
-                          agrpc::finish(
-                              responder, response, grpc::Status::OK,
-                              boost::asio::bind_executor(
-                                  executor, [c = std::move(c)](bool) {}));
-                        }));
-              }});
+  using RPC = agrpc::ServerRPC<
+      &streaming::Stream::AsyncService::RequestClientStreaming>;
+  agrpc::register_callback_rpc_handler<RPC>(
+      grpc_context, service,
+      [](RPC::Ptr ptr) mutable {
+        auto request_ptr = std::make_unique<streaming::Request>();
+        auto &request = *request_ptr;
+        auto &rpc = *ptr;
+        rpc.read(request, [c = std::move(ptr),
+                           p = std::move(request_ptr)](bool) mutable {
+          streaming::Response response;
+          *response.mutable_response() = std::move(*p->mutable_request());
+          auto &rpc = *c;
+          rpc.finish(response, grpc::Status::OK, [c = std::move(c)](bool) {});
+        });
+      },
+      boost::asio::bind_allocator(grpc_context.get_allocator(),
+                            boost::asio::detached));
 }
 
 int main() {
